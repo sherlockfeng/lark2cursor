@@ -16,6 +16,22 @@ function tempPolicy() {
   return new ApprovalPolicy(path.join(fs.mkdtempSync(path.join(os.tmpdir(), "agent2lark-policy-")), "policy.json"));
 }
 
+async function waitFor(assertion, { timeoutMs = 200, intervalMs = 5 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  let lastError;
+  while (Date.now() < deadline) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+  assertion();
+  if (lastError) throw lastError;
+}
+
 test("binds a Cursor session for the canonical English `bind lark thread message_id:` form", async () => {
   const store = tempStore();
   store.createPendingBind({
@@ -596,16 +612,16 @@ test("starts a thinking heartbeat on prompt_submit and stops on agent_response",
     prompt: "do the thing"
   }, { store, lark, thinkingHeartbeat: heartbeat });
 
-  await new Promise((resolve) => setTimeout(resolve, 18));
+  await waitFor(() => {
+    const thinkingTicks = sent.filter((m) => /Thinking…/.test(m.text || "")).length;
+    assert.ok(thinkingTicks >= 2, `expected at least 2 heartbeats, got ${thinkingTicks}`);
+  });
 
   await handleBridgeMessage({
     type: "cursor_agent_response",
     session_id: "session-1",
     text: "done"
   }, { store, lark, thinkingHeartbeat: heartbeat });
-
-  const thinkingTicks = sent.filter((m) => /Thinking…/.test(m.text || "")).length;
-  assert.ok(thinkingTicks >= 2, `expected at least 2 heartbeats, got ${thinkingTicks}`);
 
   const before = sent.length;
   await new Promise((resolve) => setTimeout(resolve, 15));
