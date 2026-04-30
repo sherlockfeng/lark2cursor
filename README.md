@@ -2,6 +2,8 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
+[![CI](https://github.com/sherlockfeng/lark2cursor/actions/workflows/ci.yml/badge.svg)](https://github.com/sherlockfeng/lark2cursor/actions/workflows/ci.yml)
+
 Bridge a Feishu / Lark thread with Cursor IDE — bidirectionally and without
 UI automation.
 

@@ -2,6 +2,8 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
+[![CI](https://github.com/sherlockfeng/lark2cursor/actions/workflows/ci.yml/badge.svg)](https://github.com/sherlockfeng/lark2cursor/actions/workflows/ci.yml)
+
 把飞书 / Lark 话题和 Cursor IDE 连接起来，支持双向对话、后台 Agent 调用和远程工具审批，不依赖 UI 自动化。
 
 `agent2lark-cursor` 基于 Cursor public hooks 和 [`lark-cli`](https://www.npmjs.com/package/@larksuite/cli) 实现本地桥接服务。它主要提供三类能力：
