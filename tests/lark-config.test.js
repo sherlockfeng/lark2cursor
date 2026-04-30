@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  addBotToChat,
   checkLarkCliConfig,
   createCursorConversationChat
 } from "../src/lark-config.js";
@@ -94,4 +95,49 @@ test("falls back to the default 'Cursor Conversation' group name when none is pr
     }
   });
   assert.deepEqual(calls[0].args.slice(0, 4), ["im", "+chat-create", "--name", "Cursor Conversation"]);
+});
+
+test("adds the current app bot to an existing group chat", async () => {
+  const calls = [];
+  await addBotToChat({
+    chatId: "oc_existing",
+    appId: "cli_current_user_app",
+    runCommand: async (command, args) => {
+      calls.push({ command, args });
+      return { stdout: JSON.stringify({}) };
+    }
+  });
+
+  assert.deepEqual(calls, [{
+    command: bundledLarkCliCommand(),
+    args: [
+      "im",
+      "chat.members",
+      "create",
+      "--params",
+      JSON.stringify({ chat_id: "oc_existing", member_id_type: "app_id" }),
+      "--data",
+      JSON.stringify({ id_list: ["cli_current_user_app"] }),
+      "--format",
+      "json",
+      "--as",
+      "user"
+    ]
+  }]);
+});
+
+test("adds actionable permission guidance when inviting the bot fails", async () => {
+  const error = new Error("lark-cli exited with code 1");
+  error.stderr = "Permission denied: missing scope";
+
+  await assert.rejects(
+    addBotToChat({
+      chatId: "oc_existing",
+      appId: "cli_current_user_app",
+      runCommand: async () => {
+        throw error;
+      }
+    }),
+    /im:chat\.members:write_only.*authorized user must be in the target group/s
+  );
 });

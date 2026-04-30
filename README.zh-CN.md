@@ -57,6 +57,10 @@ Cursor hook -> ~/.agent2lark/cursor-relay.sock -> bridge-server -> lark-cli -> �
 - 一个飞书 / Lark 自建应用，开启机器人能力，并至少具备以下权限：
   - `im:message:receive_as_bot`
   - `im:message:send_as_bot`
+  - `im:chat`
+  - `im:chat:create`
+  - `im:chat:create_by_user`
+  - `im:chat.members:write_only`
 - 飞书应用订阅长连接事件：
   - `im.message.receive_v1`
 
@@ -81,7 +85,7 @@ pnpm run start-relay
 1. 读取内置 `lark-cli` 的当前应用配置。如果还没配置，会输出需要运行的 `lark-cli config init --new` 命令。
 2. 安装 Cursor hooks 到 `~/.cursor/hooks.json`。
 3. 后台启动 `bridge --lark-cli` 和 `lark-listen`。
-4. 询问复用已有飞书群，还是创建默认的 "Cursor Conversation" 群。
+4. 询问复用已有飞书群，还是创建默认的 "Cursor Conversation" 群，并确保当前机器人已在群内。
 5. 输出 IDE Chat Relay 绑定说明。
 
 管理后台进程：

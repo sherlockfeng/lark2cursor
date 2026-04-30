@@ -44,7 +44,9 @@ The trade-offs are documented under [Limitations](#limitations).
     installed as this package's dependency; you only need to configure it
     once for your Feishu / Lark app
   - A Feishu app with bot capability and these scopes:
-    `im:message:receive_as_bot`, `im:message:send_as_bot`
+    `im:message:receive_as_bot`, `im:message:send_as_bot`, `im:chat`,
+    `im:chat:create`, `im:chat:create_by_user`,
+    `im:chat.members:write_only`
   - The app subscribed to `im.message.receive_v1` over long connection
 
 ```bash
@@ -70,7 +72,7 @@ The interactive wizard will:
    detached processes, with stdout/stderr captured to
    `~/.agent2lark/logs/`.
 4. Ask whether to reuse an existing Feishu group (`chat_id`) or create a
-   new "Cursor Conversation" group with the current bot already invited.
+   new "Cursor Conversation" group, and ensure the current bot is invited.
 5. Print the IDE Chat Relay binding instructions.
 
 Manage the background processes with:

@@ -13,6 +13,27 @@ function parseFirstJsonObject(text = "") {
   return JSON.parse(text.slice(start, end + 1));
 }
 
+function larkCliErrorText(error) {
+  if (!error) return "";
+  return [
+    error.message,
+    error.stderr,
+    error.stdout
+  ].filter(Boolean).join("\n");
+}
+
+function withBotInviteGuidance(error) {
+  const text = larkCliErrorText(error);
+  const hint = [
+    "Bot invite failed.",
+    "Required app scopes: im:chat and im:chat.members:write_only.",
+    "The authorized user must be in the target group and allowed to invite members.",
+    "After changing scopes in Feishu/Lark Developer Console, publish the app change and rerun lark-cli config init --new if needed."
+  ].join(" ");
+  const message = text ? `${text}\n${hint}` : hint;
+  return new Error(message);
+}
+
 export async function checkLarkCliConfig(options = {}) {
   const command = resolveLarkCliCommand(options);
   const runCommand = options.runCommand || execFileAsync;
@@ -67,4 +88,35 @@ export async function createCursorConversationChat(options = {}) {
     chatId,
     name: parsed.name || parsed.data?.name || name
   };
+}
+
+export async function addBotToChat(options = {}) {
+  const command = resolveLarkCliCommand(options);
+  const runCommand = options.runCommand || execFileAsync;
+  if (!options.chatId) {
+    throw new Error("Cannot invite a bot without a Lark chat id");
+  }
+  if (!options.appId) {
+    throw new Error("Cannot invite a bot without a lark-cli app id");
+  }
+
+  try {
+    const { stdout } = await runCommand(command, [
+      "im",
+      "chat.members",
+      "create",
+      "--params",
+      JSON.stringify({ chat_id: options.chatId, member_id_type: "app_id" }),
+      "--data",
+      JSON.stringify({ id_list: [options.appId] }),
+      "--format",
+      "json",
+      "--as",
+      "user"
+    ]);
+
+    return parseFirstJsonObject(stdout);
+  } catch (error) {
+    throw withBotInviteGuidance(error);
+  }
 }
