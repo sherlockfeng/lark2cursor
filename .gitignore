@@ -1,0 +1,23 @@
+node_modules/
+npm-debug.log*
+.DS_Store
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+
+# Local env / secrets
+.env
+.env.local
+.env.*.local
+
+# Test / coverage artifacts
+coverage/
+*.log
+
+# Local relay state (also lives in ~/.agent2lark, just in case)
+.agent2lark/
+*.sock
+cursor-relay-state.json
+cursor-relay-runtime.json

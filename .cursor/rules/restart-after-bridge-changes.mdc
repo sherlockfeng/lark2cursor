@@ -1,0 +1,64 @@
+---
+description: Restart bridge + lark-listen after editing relay code
+globs: src/**/*.js,bin/**/*.js
+alwaysApply: true
+---
+
+# Restart relay after code changes
+
+Whenever you edit anything that the running bridge or `lark-listen`
+loads at startup, finish the turn by restarting them so the user
+immediately sees the new behaviour.
+
+## When to restart
+
+Restart after any change to:
+
+- `src/bridge-server.js`, `src/bridge-client.js`
+- `src/lark-adapter.js`, `src/lark-listener.js`
+- `src/hook.js`, `src/normalize.js`
+- `src/approval-policy.js`, `src/thinking-heartbeat.js`,
+  `src/cursor-runner.js`, `src/session-store.js`
+- `src/relay-supervisor.js`, `src/cli.js`, `src/installer.js`,
+  `src/start-wizard.js`, `src/lark-config.js`, `src/constants.js`
+- Anything under `bin/`
+
+You do **not** need to restart for changes confined to:
+
+- `tests/**`, `docs/**`, `README.md`, `package.json` `scripts`
+- New, unimported source files
+
+## How to restart
+
+```bash
+pnpm run restart-relay
+```
+
+This is a non-interactive replacement for `start-relay` that:
+
+1. Sends `SIGTERM` to the existing `bridge` and `lark-listen`
+   process groups (kills any orphan `lark-cli event +subscribe`
+   children too).
+2. Spawns fresh `bridge --lark-cli` and `lark-listen` workers,
+   detached, with `~/.agent2lark/logs/{bridge,lark-listen}.{out,err}.log`
+   captured.
+3. Polls the bridge UNIX socket until it accepts a connection
+   (`bridge_ready: true`) before returning, so the next
+   `afterAgentResponse` hook lands on the new bridge.
+
+If `bridge_ready` is `false`, look at
+`~/.agent2lark/logs/bridge.err.log` — typical failures are a stale
+socket file or another listener still holding the
+`subscribe_cli_*.lock`.
+
+## When NOT to auto-restart
+
+- The user explicitly asked you to hold off
+- The change broke tests — fix the tests first; do not ship a
+  broken restart
+- A hook for an in-flight Cursor turn is mid-conversation and a
+  restart could drop the reply (rare; `restart-relay` already waits
+  for socket readiness, so this is mostly OK)
+
+After restarting, briefly note in the user-facing reply that the
+new code is live and what they should expect to see.
