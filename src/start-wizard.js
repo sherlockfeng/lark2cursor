@@ -2,7 +2,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as outputStream } from "node:process";
 import { DEFAULT_RUNTIME_CONFIG_PATH } from "./constants.js";
 import { installCursorHooks } from "./installer.js";
-import { checkLarkCliConfig, createCursorConversationChat } from "./lark-config.js";
+import { addBotToChat, checkLarkCliConfig, createCursorConversationChat } from "./lark-config.js";
 import { startRelayProcesses } from "./relay-supervisor.js";
 import { ensureRuntimeConfigFile } from "./runtime-config.js";
 
@@ -44,6 +44,7 @@ export async function runStartWizard(options = {}) {
   const installHooks = options.installHooks || (() => installCursorHooks({ relay: true }));
   const startProcesses = options.startProcesses || startRelayProcesses;
   const createChat = options.createChat || createCursorConversationChat;
+  const inviteBotToChat = options.addBotToChat || addBotToChat;
   const ensureConfigFile = options.ensureConfigFile || ensureRuntimeConfigFile;
   const runtimeConfigPath = options.runtimeConfigPath || DEFAULT_RUNTIME_CONFIG_PATH;
 
@@ -83,6 +84,14 @@ export async function runStartWizard(options = {}) {
   if (!chatId) {
     write(output, "chat_id cannot be empty.");
     return { ok: false, reason: "missing_chat_id" };
+  }
+  try {
+    await inviteBotToChat({ chatId, appId: config.appId });
+    write(output, "Ensured bot is invited to Lark group.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    write(output, `Failed to invite bot to Lark group: ${message}`);
+    return { ok: false, reason: "bot_invite_failed", chatId };
   }
   printBindingGuide(output, chatId);
   return { ok: true, chatId, mode: "existing" };

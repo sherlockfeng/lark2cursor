@@ -7,6 +7,7 @@ test("start wizard reuses an existing chat and prints binding guidance", async (
   const output = [];
   const calls = [];
   const processStarts = [];
+  const botInvites = [];
 
   const result = await runStartWizard({
     output,
@@ -17,6 +18,9 @@ test("start wizard reuses an existing chat and prints binding guidance", async (
     startProcesses: (options) => {
       processStarts.push(options);
       return { started: ["bridge", "lark-listen"], reused: [] };
+    },
+    addBotToChat: async (input) => {
+      botInvites.push(input);
     }
   });
 
@@ -26,9 +30,14 @@ test("start wizard reuses an existing chat and prints binding guidance", async (
     mode: "existing"
   });
   assert.deepEqual(processStarts, [undefined]);
+  assert.deepEqual(botInvites, [{
+    chatId: "oc_existing",
+    appId: "cli_user_app"
+  }]);
   assert.deepEqual(calls, ["install-hooks"]);
   assert.match(output.join("\n"), /Reusing lark-cli app: cli_user_app/);
   assert.match(output.join("\n"), /chat_id: oc_existing/);
+  assert.match(output.join("\n"), /Ensured bot is invited to Lark group/);
   assert.match(output.join("\n"), /bind lark thread message_id: om_xxx/);
   assert.doesNotMatch(output.join("\n"), /create cursor agent/);
 });
