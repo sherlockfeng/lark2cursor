@@ -4,11 +4,12 @@ import {
   checkLarkCliConfig,
   createCursorConversationChat
 } from "../src/lark-config.js";
+import { bundledLarkCliCommand } from "../src/lark-cli-command.js";
 
 test("checks existing lark-cli app configuration without exposing secrets", async () => {
   const result = await checkLarkCliConfig({
     runCommand: async (command, args) => {
-      assert.equal(command, "lark-cli");
+      assert.equal(command, bundledLarkCliCommand());
       assert.deepEqual(args, ["config", "show"]);
       return {
         stdout: `${JSON.stringify({
@@ -40,7 +41,7 @@ test("reports missing lark-cli configuration with init guidance", async () => {
 
   assert.deepEqual(result, {
     configured: false,
-    initCommand: "lark-cli config init --new"
+    initCommand: `${bundledLarkCliCommand()} config init --new`
   });
 });
 
@@ -61,7 +62,7 @@ test("creates a Cursor conversation group with the current app bot", async () =>
   });
 
   assert.deepEqual(calls, [{
-    command: "lark-cli",
+    command: bundledLarkCliCommand(),
     args: [
       "im",
       "+chat-create",

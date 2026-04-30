@@ -4,6 +4,7 @@ import {
   createLarkCliAdapter,
   normalizeLarkEventToBridgeMessage
 } from "../src/lark-adapter.js";
+import { bundledLarkCliCommand } from "../src/lark-cli-command.js";
 
 test("normalizes compact Lark message events to bridge messages", () => {
   const message = normalizeLarkEventToBridgeMessage({
@@ -126,7 +127,7 @@ test("sends thread replies through lark-cli as bot using markdown by default", a
   });
 
   assert.deepEqual(calls, [{
-    command: "lark-cli",
+    command: bundledLarkCliCommand(),
     args: [
       "im",
       "+messages-reply",
@@ -337,7 +338,7 @@ test("sends an interactive approval card with four buttons via messages-reply", 
   });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].command, "lark-cli");
+  assert.equal(calls[0].command, bundledLarkCliCommand());
   const args = calls[0].args;
   assert.equal(args[0], "im");
   assert.equal(args[1], "+messages-reply");
@@ -379,7 +380,7 @@ test("adds an emoji reaction via lark-cli reactions create", async () => {
   await adapter.addReaction({ messageId: "om_root", emoji: "EYES" });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].command, "lark-cli");
+  assert.equal(calls[0].command, bundledLarkCliCommand());
   assert.deepEqual(calls[0].args, [
     "im",
     "reactions",

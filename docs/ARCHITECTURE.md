@@ -1,7 +1,7 @@
 # Architecture
 
-`agent2lark-cursor` connects three peers without UI automation or proprietary
-SDKs:
+`agent2lark-cursor` connects Cursor IDE and Feishu / Lark without UI
+automation or proprietary SDKs:
 
 - **Cursor IDE** — invokes us through its public hooks
   (`sessionStart`, `beforeSubmitPrompt`, `afterAgentResponse`,
@@ -11,18 +11,16 @@ SDKs:
   (`event +subscribe` for incoming, `im +messages-reply` for outgoing,
   `im reactions create` for read receipts).
 
-Three capabilities are layered on top:
+Two public capabilities are layered on top:
 
 1. **IDE Chat Relay** (Feishu thread ⇄ a specific open Cursor IDE Chat).
-2. **Official Agent Relay** (Feishu thread ⇄ a programmatic Cursor Agent
-   session, no IDE UI required).
-3. **Remote tool approval** — when Cursor wants to run a risky tool the
+2. **Remote tool approval** — when Cursor wants to run a risky tool the
    bridge posts an interactive Feishu card into the bound thread,
    blocks on a click, and optionally caches the decision in a local
    policy file (`cursor-approval-policy.json`).
 
-All three share one bridge daemon, one local message queue, one
-persistent state file and one approval policy file. There is no
+Both share one bridge daemon, one local message queue, one persistent
+state file and one approval policy file. There is no
 separate approval daemon.
 
 ## High-level diagrams
@@ -79,8 +77,7 @@ Card mode has two requirements that text mode does not:
 Acknowledgement before processing:
 
 ```text
-Lark message arrives -> bridge dequeue (IDE Chat Relay) or
-                        bridge before runPrompt (Official Agent Relay)
+Lark message arrives -> bridge dequeue (IDE Chat Relay)
   -> lark-cli im reactions create  (👀 EYES on the user's message)
   -> lark-cli im +messages-reply   (text "Got it, processing…")
   -> normal processing path
@@ -91,14 +88,13 @@ is a "still working" liveness signal, not the actual reasoning):
 
 ```text
 Turn start (cursor_prompt_submit with binding,
-           or cursor_stop returning a real Lark followup_message,
-           or lark_message routed to Official Agent)
+           or cursor_stop returning a real Lark followup_message)
   -> ThinkingHeartbeat.start(key, binding)         setInterval(intervalMs)
        -> lark-cli im +messages-reply              "🤔 Thinking… (Ns)"
-       (key = cursor session id, or "oa:<chat>:<thread>:<msg>" for OA)
+       (key = cursor session id)
 
 Turn end (cursor_agent_response, cursor_stop returning empty or
-         WAIT_HEARTBEAT, runPrompt resolves)
+         WAIT_HEARTBEAT)
   -> ThinkingHeartbeat.stop(key)                   clearInterval
 ```
 
@@ -147,20 +143,6 @@ Cursor tool/shell lifecycle hooks
     -> lark-cli im +messages-reply --reply-in-thread  "Running/Done/Failed: ..."
 ```
 
-### Official Agent Relay (active)
-
-```text
-Feishu user @bot in thread
-  -> lark-listen -> bridge lark_message
-    -> SessionStore binding.mode === "official_agent"
-    -> cursor-runner.runPrompt({cwd, prompt, agentSessionId})
-        -> @cursor/sdk.Agent (preferred) or `cursor-agent -p` CLI fallback
-    -> lark-cli im +messages-reply
-```
-
-The Cursor IDE never wakes up in this mode; everything runs from the bridge
-process.
-
 ## Module map
 
 ```text
@@ -177,7 +159,6 @@ src/
   lark-adapter.js       # lark-cli senders: thread reply, reaction, approval card
   lark-listener.js      # spawns & supervises `lark-cli event +subscribe`
   lark-config.js        # reads `lark-cli config show`, creates the default "Cursor Conversation" group
-  cursor-runner.js      # SDK-or-CLI runner used by Official Agent Relay
   relay-supervisor.js   # spawn/stop/status of bridge + lark-listen, kill group
   start-wizard.js       # interactive `pnpm run start-relay` flow
   cli.js                # argv -> command dispatch
@@ -217,7 +198,6 @@ Transient processes:
 
 ```text
 agent2lark-cursor-hook.js --event <event>   # spawned by Cursor per event
-cursor-agent / @cursor/sdk Agent             # spawned by Official Agent Relay
 ```
 
 ## Bridge wire protocol
@@ -234,9 +214,8 @@ connection is closed.
 | `cursor_agent_response` | hook (`afterAgentResponse`) | mirror Cursor reply to Lark | `{ok, suppressed?}` |
 | `cursor_progress` | hook (`postToolUse`/`postToolUseFailure`/`afterShellExecution`) and allowed approval hooks | mirror safe short progress | `{ok, sent}` |
 | `cursor_approval_request` | hook (`preToolUse`/`beforeShellExecution`/`beforeMCPExecution`) | request remote approval | `{decision: "allow"\|"deny"\|"ask", reason}` |
-| `lark_message` | `lark-listen` | enqueue Lark message or run Official Agent | `{ok, routed?}` |
+| `lark_message` | `lark-listen` | enqueue Lark message | `{ok, routed?}` |
 | `lark_create_bind` | `lark-listen` | create pending IDE Chat bind code | `{ok, code}` |
-| `lark_create_agent_bind` | `lark-listen` | create Official Agent binding | `{ok, binding}` |
 | `lark_disable_wait` | `lark-listen` | turn off the IDE Chat wait loop | `{ok}` |
 | `lark_unbind_thread` | `lark-listen` | remove the current thread binding and queued messages | `{ok, removed}` |
 | `lark_approval_decision` | `lark-listen` | resolve a pending approval request | `{ok}` |
@@ -274,7 +253,7 @@ events so the client never disconnects before the bridge.
       }
     },
     "byLarkThread": {
-      "oc_xxx:om_xxx": { /* ide_chat or official_agent binding */ }
+      "oc_xxx:om_xxx": { /* ide_chat binding */ }
     }
   },
   "queues": {
@@ -291,10 +270,6 @@ Notes:
 
 - An IDE Chat binding has no `mode` field (`"ide_chat"` is implicit) and is
   indexed under both `byCursorSession` and `byLarkThread`.
-- An Official Agent binding has `mode: "official_agent"` and lives only in
-  `byLarkThread`. Creating one for a thread that already has an IDE Chat
-  binding deletes the corresponding `byCursorSession` entry, making the
-  switch atomic.
 - The bridge resolves inbound Lark messages with
   `resolveInboundLarkThread`. When `lark-cli`'s compact event omits the
   thread root and a chat has exactly one bound thread, the message is
@@ -305,8 +280,8 @@ Notes:
   example due to missing read permission), it falls back to the event
   fields and bridge-side chat fallback.
 - `@bot unbind` / `@bot un bind` emits `lark_unbind_thread`, removing the
-  current thread's IDE Chat or Official Agent binding and clearing queued
-  messages for that thread. `@bot /help` prints the supported command
+  current thread's IDE Chat binding and clearing queued messages for that
+  thread. `@bot /help` prints the supported command
   reference in the same thread.
 
 ## IDE Chat wait loop
@@ -463,8 +438,7 @@ one). On every match, `hits` and `lastUsedAt` are updated.
 | `AGENT2LARK_APPROVAL_POLICY` | `~/.agent2lark/cursor-approval-policy.json` | override approval rules path |
 | `AGENT2LARK_THINKING_INTERVAL_MS` | unset | optional env override for `thinkingIntervalMs` in `~/.agent2lark/config.json` |
 | `AGENT2LARK_PROGRESS_RELAY` | unset | optional env override for `progressRelayEnabled` in `~/.agent2lark/config.json` |
-| `AGENT2LARK_CURSOR_AGENT_CWD` | bridge cwd | working directory for Official Agent Relay |
-| `CURSOR_AGENT_COMMAND` | `cursor-agent` | CLI fallback for Official Agent Relay |
+| `LARK_CLI_COMMAND` | bundled `node_modules/.bin/lark-cli` | override the Lark CLI executable |
 | `AGENT2LARK_RELAY_STATE` | `~/.agent2lark/cursor-relay-state.json` | override SessionStore path |
 
 ## Failure modes & how the system reacts
@@ -476,7 +450,6 @@ one). On every match, `hits` and `lastUsedAt` are updated.
 | `stop` hook longer than client default timeout | premature disconnect, wait loop dies | `relayBridgeTimeoutMs` extends `stop` timeout to `WAIT_POLL_MS + 5s` |
 | Bridge socket read times out | silent empty response (`{}`) | `bridge-client` rejects with an explicit error |
 | Cursor IDE Chat is closed while bound | next Lark message stays queued | manual `pnpm run status-relay` + open the chat to drain queue |
-| No `cwd` for Official Agent | wrong project context | `start-wizard` prompts for it; `AGENT2LARK_CURSOR_AGENT_CWD` overrides |
 
 ## Security notes
 

@@ -35,6 +35,7 @@ Environment:
   AGENT2LARK_APPROVAL_POLICY   Override ~/.agent2lark/cursor-approval-policy.json
   AGENT2LARK_THINKING_INTERVAL_MS Override ${DEFAULT_RUNTIME_CONFIG_PATH} thinkingIntervalMs
   AGENT2LARK_PROGRESS_RELAY    Override ${DEFAULT_RUNTIME_CONFIG_PATH} progressRelayEnabled (1/0)
+  LARK_CLI_COMMAND             Override the bundled lark-cli binary
 `);
 }
 

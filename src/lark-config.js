@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { resolveLarkCliCommand } from "./lark-cli-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -13,14 +14,15 @@ function parseFirstJsonObject(text = "") {
 }
 
 export async function checkLarkCliConfig(options = {}) {
-  const command = options.command || "lark-cli";
+  const command = resolveLarkCliCommand(options);
   const runCommand = options.runCommand || execFileAsync;
+  const initCommand = `${command} config init --new`;
 
   try {
     const { stdout } = await runCommand(command, ["config", "show"]);
     const parsed = parseFirstJsonObject(stdout);
     if (!parsed.appId) {
-      return { configured: false, initCommand: "lark-cli config init --new" };
+      return { configured: false, initCommand };
     }
 
     return {
@@ -31,12 +33,12 @@ export async function checkLarkCliConfig(options = {}) {
       users: parsed.users || ""
     };
   } catch {
-    return { configured: false, initCommand: "lark-cli config init --new" };
+    return { configured: false, initCommand };
   }
 }
 
 export async function createCursorConversationChat(options = {}) {
-  const command = options.command || "lark-cli";
+  const command = resolveLarkCliCommand(options);
   const runCommand = options.runCommand || execFileAsync;
   const name = options.name || "Cursor Conversation";
   if (!options.appId) {

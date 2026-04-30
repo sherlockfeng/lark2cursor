@@ -557,7 +557,7 @@ test("replies with help text for /help", async () => {
   assert.match(replies[0].text, /bind chat/);
   assert.match(replies[0].text, /unbind/);
   assert.match(replies[0].text, /\/allow!/);
-  assert.match(replies[0].text, /create cursor agent/);
+  assert.doesNotMatch(replies[0].text, /create cursor agent/);
 });
 
 test("parses /allow! when the message starts with a multi-word @bot mention", async () => {

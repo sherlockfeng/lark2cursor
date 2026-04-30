@@ -3,7 +3,7 @@ import test from "node:test";
 import { runStartWizard } from "../src/start-wizard.js";
 
 test("start wizard reuses an existing chat and prints binding guidance", async () => {
-  const prompts = ["/tmp/project", "existing", "oc_existing"];
+  const prompts = ["existing", "oc_existing"];
   const output = [];
   const calls = [];
   const processStarts = [];
@@ -25,18 +25,16 @@ test("start wizard reuses an existing chat and prints binding guidance", async (
     chatId: "oc_existing",
     mode: "existing"
   });
-  assert.deepEqual(processStarts, [{
-    env: { AGENT2LARK_CURSOR_AGENT_CWD: "/tmp/project" }
-  }]);
+  assert.deepEqual(processStarts, [undefined]);
   assert.deepEqual(calls, ["install-hooks"]);
   assert.match(output.join("\n"), /Reusing lark-cli app: cli_user_app/);
   assert.match(output.join("\n"), /chat_id: oc_existing/);
   assert.match(output.join("\n"), /bind lark thread message_id: om_xxx/);
-  assert.match(output.join("\n"), /create cursor agent/);
+  assert.doesNotMatch(output.join("\n"), /create cursor agent/);
 });
 
 test("start wizard creates a default Cursor conversation chat", async () => {
-  const prompts = ["", "new", ""];
+  const prompts = ["new", ""];
   const output = [];
   const result = await runStartWizard({
     output,
@@ -60,7 +58,7 @@ test("start wizard creates a default Cursor conversation chat", async () => {
 });
 
 test("start wizard rejects an empty existing chat id", async () => {
-  const prompts = ["/tmp/project", "existing", ""];
+  const prompts = ["existing", ""];
   const output = [];
   const result = await runStartWizard({
     output,

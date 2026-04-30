@@ -33,12 +33,8 @@ function printBindingGuide(output, chatId) {
   write(output, "3. In the target Cursor IDE Chat, send: bind lark thread message_id: om_xxx");
   write(output, "4. Subsequent Lark thread messages flow into that Chat on the next Cursor stop hook.");
   write(output, "");
-  write(output, "Official Agent Relay binding:");
-  write(output, "1. In the Lark group, @ the bot with: create cursor agent");
-  write(output, "2. Then @ the bot in this Lark thread; the background agent processes and replies.");
-  write(output, "");
   write(output, "Other Lark thread commands: /help — show command reference; unbind — remove this thread binding; stop wait | disable wait | pause wait — turn off the IDE Chat continuous-wait loop.");
-  write(output, "(Legacy zh-CN aliases still work: 绑定对话 / 绑定飞书话题 / 创建 Cursor Agent 对话 / 停止等待 / 关闭等待.)");
+  write(output, "(Legacy zh-CN aliases still work: 绑定对话 / 绑定飞书话题 / 停止等待 / 关闭等待.)");
 }
 
 export async function runStartWizard(options = {}) {
@@ -65,11 +61,8 @@ export async function runStartWizard(options = {}) {
   } else {
     write(output, `Runtime config: ${runtimeConfigPath} (edit and run pnpm run restart-relay to apply).`);
   }
-  const agentCwd = String(await ask(`Cursor Agent working directory [${process.cwd()}]: `) || "").trim() || process.cwd();
   installHooks();
-  const processes = startProcesses({
-    env: { AGENT2LARK_CURSOR_AGENT_CWD: agentCwd }
-  });
+  const processes = startProcesses();
   if (processes.started?.length) {
     write(output, `Started background processes: ${processes.started.join(", ")}`);
   }

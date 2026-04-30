@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { resolveLarkCliCommand } from "./lark-cli-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -123,7 +124,7 @@ export function normalizeLarkEventToBridgeMessage(event) {
 }
 
 export function createLarkCliAdapter(options = {}) {
-  const command = options.command || "lark-cli";
+  const command = resolveLarkCliCommand(options);
   const identity = options.identity || "bot";
   const runCommand = options.runCommand || execFileAsync;
 

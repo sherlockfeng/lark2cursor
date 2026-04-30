@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { installCursorHooks } from "../src/installer.js";
+import { doctor, installCursorHooks } from "../src/installer.js";
+import { bundledLarkCliCommand } from "../src/lark-cli-command.js";
 
 function tempHooksPath() {
   return path.join(fs.mkdtempSync(path.join(os.tmpdir(), "agent2lark-hooks-")), "hooks.json");
@@ -35,4 +36,18 @@ test("installs relay hooks when relay mode is enabled", () => {
     "Shell|Bash|Write|Edit|Delete|ApplyPatch|MultiEdit|MCP:.*|mcp__.*"
   );
   assert.equal(config.hooks.stop[0].loop_limit, null);
+});
+
+test("doctor reports the lark-cli command used by the relay", () => {
+  const previous = process.env.LARK_CLI_COMMAND;
+  delete process.env.LARK_CLI_COMMAND;
+  try {
+    assert.equal(doctor().larkCliCommand, bundledLarkCliCommand());
+  } finally {
+    if (previous === undefined) {
+      delete process.env.LARK_CLI_COMMAND;
+    } else {
+      process.env.LARK_CLI_COMMAND = previous;
+    }
+  }
 });

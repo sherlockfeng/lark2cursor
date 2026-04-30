@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { sendBridgeMessage } from "./bridge-client.js";
 import { createLarkCliAdapter, normalizeLarkEventToBridgeMessage } from "./lark-adapter.js";
+import { resolveLarkCliCommand } from "./lark-cli-command.js";
 
 function normalizeOptions(options) {
   if (typeof options === "function") {
@@ -100,7 +101,6 @@ function buildHelpText() {
     "",
     "**Binding**",
     "- `bind chat` - create an IDE Chat Relay bind code. Then send `bind lark thread message_id: <message_id>` in the target Cursor chat.",
-    "- `create cursor agent` - bind this Lark thread to the Official Agent Relay.",
     "- `unbind` / `un bind` - remove this Lark thread's current relay binding.",
     "",
     "**Waiting**",
@@ -383,7 +383,7 @@ export async function handleLarkEventLine(line, options = sendBridgeMessage) {
 }
 
 export function startLarkEventListener(options = {}) {
-  const command = options.command || "lark-cli";
+  const command = resolveLarkCliCommand(options);
   const args = options.args || [
     "event",
     "+subscribe",
@@ -396,7 +396,7 @@ export function startLarkEventListener(options = {}) {
   ];
   const spawnProcess = options.spawnProcess || spawn;
   const send = options.send || ((message) => sendBridgeMessage(message, { socketPath: options.socketPath }));
-  const lark = options.lark || createLarkCliAdapter();
+  const lark = options.lark || createLarkCliAdapter(options);
   const log = options.log || ((message) => process.stdout.write(`${message}\n`));
   const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const respawnDelayMs = Number(options.respawnDelayMs ?? 1000);

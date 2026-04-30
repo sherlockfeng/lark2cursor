@@ -10,16 +10,13 @@ UI automation.
 `agent2lark-cursor` is a small Node project that wires Cursor's public
 hooks (`sessionStart`, `beforeSubmitPrompt`, `afterAgentResponse`,
 `stop`, ...) and the [`lark-cli`](https://www.npmjs.com/package/@larksuite/cli)
-command-line client into a local bridge daemon. It gives you three
-independent capabilities, all pluggable:
+command-line client into a local bridge daemon. It gives you two
+independent capabilities:
 
 1. **IDE Chat Relay** — pin a Feishu thread to an open Cursor IDE Agent
    Chat. Messages from the Feishu thread show up in Cursor as the next
    prompt; Cursor's reply is posted back into the same thread.
-2. **Official Agent Relay** — pin a Feishu thread to a programmatic
-   [Cursor Agent](https://docs.cursor.com/) session via `@cursor/sdk` or
-   the `cursor-agent` CLI. The Cursor IDE never has to be open.
-3. **Remote tool approval** — when Cursor wants to run something risky
+2. **Remote tool approval** — when Cursor wants to run something risky
    (`preToolUse` / `beforeShellExecution` / `beforeMCPExecution`), the
    bridge posts an interactive approval card into the **bound Feishu
    thread** (Approve / Deny / Approve&remember / Deny&remember) and
@@ -39,18 +36,16 @@ The trade-offs are documented under [Limitations](#limitations).
 
 ## Requirements
 
-- Node.js `>=18`
+- Node.js `>=20.12.0`
 - `pnpm`
 - Cursor IDE with hooks enabled (any recent build)
 - Feishu / Lark integrations:
-  - [`lark-cli`](https://www.npmjs.com/package/@larksuite/cli) installed
-    and configured (`lark-cli config init --new`)
+  - [`@larksuite/cli`](https://www.npmjs.com/package/@larksuite/cli) is
+    installed as this package's dependency; you only need to configure it
+    once for your Feishu / Lark app
   - A Feishu app with bot capability and these scopes:
     `im:message:receive_as_bot`, `im:message:send_as_bot`
   - The app subscribed to `im.message.receive_v1` over long connection
-- (Optional) a Cursor Agent runner if you want Official Agent Relay:
-  either install `@cursor/sdk` next to this project, or have
-  `cursor-agent` on `$PATH`
 
 ```bash
 pnpm install
@@ -66,17 +61,17 @@ pnpm run start-relay
 
 The interactive wizard will:
 
-1. Read the active `lark-cli` app config (it does **not** read or print
-   any secret), or guide you to run `lark-cli config init --new` first.
+1. Read the active bundled `lark-cli` app config (it does **not** read or
+   print any secret), or print the exact `lark-cli config init --new`
+   command to run first.
 2. Install Cursor hooks for both relay and approval into
    `~/.cursor/hooks.json`.
 3. Spawn `bridge --lark-cli` and `lark-listen` in the background as
    detached processes, with stdout/stderr captured to
    `~/.agent2lark/logs/`.
-4. Ask for the working directory you want Official Agent Relay to use.
-5. Ask whether to reuse an existing Feishu group (`chat_id`) or create a
+4. Ask whether to reuse an existing Feishu group (`chat_id`) or create a
    new "Cursor Conversation" group with the current bot already invited.
-6. Print the binding instructions for the two relay modes.
+5. Print the IDE Chat Relay binding instructions.
 
 Manage the background processes with:
 
@@ -95,6 +90,10 @@ behaviour without needing the full `start-relay` wizard.
 +subscribe` child is cleaned up too. This avoids "another `event
 +subscribe` instance is already running" errors caused by stale orphans
 holding `~/.lark-cli/locks/subscribe_cli_*.lock`.
+
+By default, the relay uses the bundled dependency binary at
+`node_modules/.bin/lark-cli`. Set `LARK_CLI_COMMAND=/path/to/lark-cli` if
+you intentionally want to use a separately installed CLI.
 
 ## IDE Chat Relay
 
@@ -173,46 +172,12 @@ Constraints:
 - The Chat must remain open for messages to flow in. Cursor's public
   hooks cannot wake an idle window.
 
-## Official Agent Relay
-
-Best when you're away from the computer and want Feishu messages to
-trigger work autonomously.
-
-In the Feishu group, mention the bot in the target thread:
-
-```text
-@bot create cursor agent
-```
-
-(zh-CN alias `@bot 创建 Cursor Agent 对话` still works.)
-
-Use `@bot unbind` in the same thread to remove this binding.
-
-The bridge creates an `official_agent` binding for that thread. From now
-on, every `@bot <prompt>` posted in the same thread is handed to
-`cursor-runner`, which:
-
-1. Tries `import("@cursor/sdk")` and uses `Agent.create({ local: { cwd }})`
-   or `Agent.resume(agentSessionId)` if available.
-2. Otherwise falls back to running `cursor-agent -p "<prompt>" [--resume
-   <agentSessionId>] --force` in the configured working directory.
-
-The agent's response is posted back to the Feishu thread by `lark-cli im
-+messages-reply --reply-in-thread`. The Cursor IDE is not involved at
-all in this path — your laptop just needs the bridge process running.
-
-Configure the working directory either through the wizard or via:
-
-```bash
-AGENT2LARK_CURSOR_AGENT_CWD=/path/to/project pnpm run bridge:lark
-```
-
 ## Remote tool approval
 
 Approval is fully self-contained — there is no separate daemon. As long
-as a Feishu thread is bound (IDE Chat Relay or Official Agent Relay)
-and the bridge is running, Cursor's risky tool calls automatically
-post an approval prompt to that thread:
+as a Feishu thread is bound through IDE Chat Relay and the bridge is
+running, Cursor's risky tool calls automatically post an approval prompt
+to that thread:
 
 ```text
 🔒 Cursor approval required
@@ -354,8 +319,7 @@ pnpm run lark-listen:debug     # also echoes message_id back to Feishu
 | `AGENT2LARK_APPROVAL_POLICY` | `~/.agent2lark/cursor-approval-policy.json` | Cached approval rules path |
 | `AGENT2LARK_THINKING_INTERVAL_MS` | unset | Optional env override for `thinkingIntervalMs` in `~/.agent2lark/config.json` |
 | `AGENT2LARK_PROGRESS_RELAY` | unset | Optional env override for `progressRelayEnabled` in `~/.agent2lark/config.json` |
-| `AGENT2LARK_CURSOR_AGENT_CWD` | bridge cwd | Working directory for Official Agent Relay |
-| `CURSOR_AGENT_COMMAND` | `cursor-agent` | CLI fallback used by Official Agent Relay |
+| `LARK_CLI_COMMAND` | bundled `node_modules/.bin/lark-cli` | Override the Lark CLI executable |
 | `AGENT2LARK_RELAY_STATE` | `~/.agent2lark/cursor-relay-state.json` | Override the SessionStore path |
 
 State and runtime files:
@@ -390,7 +354,6 @@ enough to localise where a stalled message is stuck.
 | `stop` hook disconnects after 30 s | Old build before `relayBridgeTimeoutMs` extension | rebuild and restart Cursor; the hook now uses `AGENT2LARK_WAIT_POLL_MS + 5_000` |
 | Bridge socket missing | Bridge not running | `pnpm run start-relay` (or `pnpm run bridge:lark` in foreground) |
 | Bot cannot reply to thread | Missing `im:message:send_as_bot` scope, or bot is not in the chat | re-check Feishu app permissions and group membership |
-| Official Agent never produces output | Neither `@cursor/sdk` nor `cursor-agent` on `$PATH` | install one and set `CURSOR_AGENT_COMMAND` |
 
 ## Limitations
 
@@ -400,10 +363,6 @@ enough to localise where a stalled message is stuck.
 - The continuous wait loop ties up one Cursor Chat per bound thread and
   does cost a small steady stream of model tokens. Use `stop wait` to
   release a thread on demand.
-- Official Agent Relay depends on a working Cursor Agent runner on the
-  machine. The CLI fallback is documented at
-  https://docs.cursor.com/cli (binary name configurable via
-  `CURSOR_AGENT_COMMAND`).
 - `stop.followup_message` runs in a loop with `loop_limit: null`. This
   is what makes the wait loop possible. Only enable relay hooks on
   trusted local environments — anyone who can write to the bridge

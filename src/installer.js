@@ -13,6 +13,7 @@ import {
   USER_CURSOR_DIR,
   USER_HOOKS_PATH
 } from "./constants.js";
+import { resolveLarkCliCommand } from "./lark-cli-command.js";
 
 function quote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
@@ -122,6 +123,7 @@ export function doctor() {
     bridgeBinExists: fs.existsSync(BRIDGE_BIN_PATH),
     bridgeSocketPath: process.env.AGENT2LARK_BRIDGE_SOCKET || DEFAULT_BRIDGE_SOCKET_PATH,
     bridgeSocketExists: fs.existsSync(process.env.AGENT2LARK_BRIDGE_SOCKET || DEFAULT_BRIDGE_SOCKET_PATH),
+    larkCliCommand: resolveLarkCliCommand(),
     relayStatePath: process.env.AGENT2LARK_RELAY_STATE || DEFAULT_RELAY_STATE_PATH,
     approvalPolicyPath: process.env.AGENT2LARK_APPROVAL_POLICY || DEFAULT_APPROVAL_POLICY_PATH
   };
