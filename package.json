@@ -1,5 +1,5 @@
 {
-  "name": "agent2lark-cursor",
+  "name": "@sherlockfeng/lark2cursor",
   "version": "0.1.0",
   "description": "Cursor hooks adapter that bridges Cursor IDE Agent Chats with Feishu/Lark threads, plus self-contained remote tool approval.",
   "type": "module",
