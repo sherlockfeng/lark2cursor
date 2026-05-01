@@ -39,6 +39,7 @@ test("start wizard reuses an existing chat and prints binding guidance", async (
   assert.match(output.join("\n"), /chat_id: oc_existing/);
   assert.match(output.join("\n"), /Ensured bot is invited to Lark group/);
   assert.match(output.join("\n"), /bind lark thread message_id: om_xxx/);
+  assert.match(output.join("\n"), /AGENT2LARK_WAITING_FOR_LARK/);
   assert.doesNotMatch(output.join("\n"), /create cursor agent/);
 });
 

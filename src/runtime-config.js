@@ -7,7 +7,7 @@ import { DEFAULT_RUNTIME_CONFIG_PATH } from "./constants.js";
 // generated file in place.
 export const RUNTIME_CONFIG_DEFAULTS = Object.freeze({
   thinkingIntervalMs: 60_000,
-  progressRelayEnabled: true
+  progressRelayEnabled: false
 });
 
 function readFile(configPath) {

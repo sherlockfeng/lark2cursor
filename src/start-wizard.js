@@ -31,7 +31,11 @@ function printBindingGuide(output, chatId) {
   write(output, "1. In the Lark group, @ the bot with: bind chat");
   write(output, "2. The bot replies with: message_id: om_xxx");
   write(output, "3. In the target Cursor IDE Chat, send: bind lark thread message_id: om_xxx");
-  write(output, "4. Subsequent Lark thread messages flow into that Chat on the next Cursor stop hook.");
+  write(output, "4. In that Cursor Chat, send the exact wait-loop starter shown after binding:");
+  write(output, "   AGENT2LARK_WAITING_FOR_LARK");
+  write(output, "   Please reply with only: AGENT2LARK_WAITING_FOR_LARK");
+  write(output, "   Do not invoke any tools and do not send a business reply to Lark.");
+  write(output, "5. Subsequent Lark thread messages flow into that Chat on the next Cursor stop hook.");
   write(output, "");
   write(output, "Other Lark thread commands: /help — show command reference; unbind — remove this thread binding; stop wait | disable wait | pause wait — turn off the IDE Chat continuous-wait loop.");
   write(output, "(Legacy zh-CN aliases still work: 绑定对话 / 绑定飞书话题 / 停止等待 / 关闭等待.)");
