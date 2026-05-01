@@ -130,7 +130,19 @@ message_id: om_xxx
 bind lark thread message_id: om_xxx
 ```
 
-绑定成功后，这个飞书话题和这个 Cursor Chat 就建立了一对一关系。
+绑定命令会被 hook 拦截，不会发送给模型。看到绑定成功提示后，
+还需要在同一个 Cursor Chat 中发送下面这段精确的等待循环启动消息：
+
+```text
+AGENT2LARK_WAITING_FOR_LARK
+Please reply with only: AGENT2LARK_WAITING_FOR_LARK
+Do not invoke any tools and do not send a business reply to Lark.
+```
+
+这段消息会要求模型只回固定哨兵字符串，不应该读文件或调用工具。
+这一轮结束时会触发 Cursor 的 `stop` hook，之后飞书消息才会被 bridge
+拉进这个 Cursor Chat。否则飞书消息可能已经进入 bridge 队列，但 idle
+的 Cursor Chat 没有 hook 连接去取它。
 
 兼容中文旧命令：
 
@@ -146,7 +158,7 @@ Cursor Chat 中也仍可使用：
 
 ### 持续等待循环
 
-绑定后，Cursor Chat 默认进入连续等待循环：
+绑定后需要先在 Cursor Chat 里发送一条短消息启动连续等待循环。启动后流程是：
 
 1. Cursor 完成一轮回复。
 2. `stop` hook 触发。
@@ -201,7 +213,7 @@ AGENT2LARK_THINKING_INTERVAL_MS=30000 pnpm run restart-relay
 
 ### 安全简短进度同步
 
-bridge 会把 Cursor 工具生命周期同步为一行短消息，例如：
+默认关闭。开启后，bridge 会把 Cursor 工具生命周期同步为一行短消息，例如：
 
 ```text
 Running: `pnpm test`
@@ -216,18 +228,19 @@ Failed: `ApplyPatch`
 - 会对常见 `TOKEN`、`SECRET`、`PASSWORD`、`API_KEY` 等环境变量片段做简单脱敏。
 - 每条进度摘要都会重置思考心跳计时；只有进度摘要超过 `thinkingIntervalMs` 没有更新时，才会再发 `🤔 Thinking…`。
 
-关闭方式：
+默认不会同步工具调用生命周期，只同步助手在 Cursor Chat 里输出的文字回复。
+如需打开这种一行式工具进度摘要，可以配置：
 
 ```json
 {
-  "progressRelayEnabled": false
+  "progressRelayEnabled": true
 }
 ```
 
 或临时环境变量：
 
 ```bash
-AGENT2LARK_PROGRESS_RELAY=0 pnpm run restart-relay
+AGENT2LARK_PROGRESS_RELAY=1 pnpm run restart-relay
 ```
 
 ### IDE Chat Relay 限制
@@ -432,7 +445,7 @@ pnpm run lark-listen:debug
 ```json
 {
   "thinkingIntervalMs": 60000,
-  "progressRelayEnabled": true
+  "progressRelayEnabled": false
 }
 ```
 

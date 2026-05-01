@@ -273,7 +273,7 @@ function isWaitHeartbeat(text = "") {
 }
 
 function progressRelayEnabled(runtimeConfig = {}) {
-  return runtimeConfig.progressRelayEnabled !== false;
+  return runtimeConfig.progressRelayEnabled === true;
 }
 
 function redactSensitiveText(value = "") {
@@ -419,9 +419,14 @@ export async function handleBridgeMessage(input, options = {}) {
         sessionId: message.session_id,
         cwd: message.cwd
       });
+      log(`[bridge] bound_cursor_session session=${message.session_id || ""} thread=${binding.threadId || ""}`);
       return {
         continue: false,
-        user_message: `Bound to Lark thread ${binding.threadId}.`
+        user_message: [
+          `Binding succeeded. Bound to Lark thread ${binding.threadId}.`,
+          "This bind command was intentionally intercepted so it is not sent to the model.",
+          `Next step: send this exact message in this Cursor Chat to start the wait loop without tool calls:\n${WAIT_HEARTBEAT}\nPlease reply with only: ${WAIT_HEARTBEAT}\nDo not invoke any tools and do not send a business reply to Lark.`
+        ].join("\n")
       };
     } catch (error) {
       return {
@@ -794,6 +799,7 @@ export function startBridgeServer(options = {}) {
           approvalPolicy,
           approvalRegistry,
           thinkingHeartbeat,
+          runtimeConfig,
           log: options.log || ((message) => process.stdout.write(`${message}\n`))
         }))
         .then((response) => {

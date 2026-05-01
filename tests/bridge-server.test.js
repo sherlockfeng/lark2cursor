@@ -50,7 +50,11 @@ test("binds a Cursor session for the canonical English `bind lark thread message
 
   assert.deepEqual(response, {
     continue: false,
-    user_message: "Bound to Lark thread omt_thread."
+    user_message: [
+      "Binding succeeded. Bound to Lark thread omt_thread.",
+      "This bind command was intentionally intercepted so it is not sent to the model.",
+      "Next step: send this exact message in this Cursor Chat to start the wait loop without tool calls:\nAGENT2LARK_WAITING_FOR_LARK\nPlease reply with only: AGENT2LARK_WAITING_FOR_LARK\nDo not invoke any tools and do not send a business reply to Lark."
+    ].join("\n")
   });
   assert.equal(store.getBindingByCursorSession("cursor-session").threadId, "omt_thread");
 });
@@ -73,7 +77,11 @@ test("still accepts the legacy `绑定飞书话题 message_id:` zh-CN alias", as
 
   assert.deepEqual(response, {
     continue: false,
-    user_message: "Bound to Lark thread omt_thread."
+    user_message: [
+      "Binding succeeded. Bound to Lark thread omt_thread.",
+      "This bind command was intentionally intercepted so it is not sent to the model.",
+      "Next step: send this exact message in this Cursor Chat to start the wait loop without tool calls:\nAGENT2LARK_WAITING_FOR_LARK\nPlease reply with only: AGENT2LARK_WAITING_FOR_LARK\nDo not invoke any tools and do not send a business reply to Lark."
+    ].join("\n")
   });
 });
 
@@ -143,7 +151,11 @@ test("binds a Cursor session when the prompt includes a message_id label", async
 
   assert.deepEqual(response, {
     continue: false,
-    user_message: "Bound to Lark thread om_test_thread_root."
+    user_message: [
+      "Binding succeeded. Bound to Lark thread om_test_thread_root.",
+      "This bind command was intentionally intercepted so it is not sent to the model.",
+      "Next step: send this exact message in this Cursor Chat to start the wait loop without tool calls:\nAGENT2LARK_WAITING_FOR_LARK\nPlease reply with only: AGENT2LARK_WAITING_FOR_LARK\nDo not invoke any tools and do not send a business reply to Lark."
+    ].join("\n")
   });
   assert.equal(
     store.getBindingByCursorSession("cursor-session").threadId,
@@ -597,6 +609,40 @@ test("does not send cursor progress when progress relay is disabled", async () =
   assert.deepEqual(sent, []);
 });
 
+test("does not send cursor progress unless progress relay is explicitly enabled", async () => {
+  const sent = [];
+  const store = tempStore();
+  store.createPendingBind({
+    code: "abc123",
+    chatId: "oc_chat",
+    threadId: "omt_thread",
+    expiresAt: Date.now() + 60_000
+  });
+  store.bindCursorSession({
+    code: "abc123",
+    sessionId: "cursor-session",
+    cwd: "/tmp/project"
+  });
+
+  const response = await handleBridgeMessage({
+    type: "cursor_progress",
+    session_id: "cursor-session",
+    phase: "completed",
+    tool: "ReadFile",
+    command: "/tmp/project/package.json"
+  }, {
+    store,
+    lark: {
+      async sendThreadMessage(message) {
+        sent.push(message);
+      }
+    }
+  });
+
+  assert.deepEqual(response, { ok: true, sent: false, reason: "disabled" });
+  assert.deepEqual(sent, []);
+});
+
 test("starts a thinking heartbeat on prompt_submit and stops on agent_response", async () => {
   const store = tempStore();
   store.createPendingBind({ code: "abc", chatId: "oc", threadId: "omt", expiresAt: Date.now() + 60_000 });
@@ -698,8 +744,7 @@ test("returns a cached approval decision without sending a card", async () => {
 
   assert.equal(response.decision, "allow");
   assert.match(String(response.reason || ""), /cached/);
-  assert.equal(sent.length, 1);
-  assert.match(sent[0].text, /Running: `git status -uno`/);
+  assert.deepEqual(sent, []);
 });
 
 test("remembered MCP approvals are scoped to the exact MCP tool, not empty args", async () => {

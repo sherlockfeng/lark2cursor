@@ -41,7 +41,7 @@ test("writes default runtime config when missing", () => {
 
   const parsed = JSON.parse(fs.readFileSync(configPath, "utf8"));
   assert.equal(parsed.thinkingIntervalMs, 60_000);
-  assert.equal(parsed.progressRelayEnabled, true);
+  assert.equal(parsed.progressRelayEnabled, false);
 });
 
 test("reads progressRelayEnabled from runtime config and env", () => {

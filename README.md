@@ -120,18 +120,33 @@ In the target Cursor IDE Agent Chat, send:
 bind lark thread message_id: om_xxx
 ```
 
+The bind command is intercepted by the hook so it is not sent to the
+model. After the success message, send the exact wait-loop starter shown
+below in that same Cursor Chat:
+
+```text
+AGENT2LARK_WAITING_FOR_LARK
+Please reply with only: AGENT2LARK_WAITING_FOR_LARK
+Do not invoke any tools and do not send a business reply to Lark.
+```
+
+That starter asks the model to echo only the sentinel string, so it should
+not inspect files or run tools. Its turn end triggers Cursor's `stop` hook
+and starts the continuous wait loop. Without this one manual turn, Lark
+messages can be queued in the bridge but the idle Cursor Chat has no hook
+connection to pull them in.
+
 > Legacy zh-CN aliases still work for backward compatibility:
 > `@bot 绑定对话` in Feishu and `绑定飞书话题 message_id: om_xxx` in Cursor.
 
-After binding, the Chat enters a **continuous wait loop** by default: at
-the end of every Cursor turn, the `stop` hook long-polls the bridge for
-new Feishu messages (default 10 minutes per round, see
-`AGENT2LARK_WAIT_POLL_MS`). If a message arrives, Cursor automatically
-continues with `Lark thread ...:<message>` as its next user prompt. If
-nothing arrives within the round, the bridge returns an internal
-heartbeat (`AGENT2LARK_WAITING_FOR_LARK`) that keeps the Chat parked
-without spamming Feishu — the heartbeat is suppressed before it would be
-sent back as an agent response.
+Once the wait loop has started, the `stop` hook long-polls the bridge for
+new Feishu messages at the end of every Cursor turn (default 10 minutes
+per round, see `AGENT2LARK_WAIT_POLL_MS`). If a message arrives, Cursor
+automatically continues with `Lark thread ...:<message>` as its next user
+prompt. If nothing arrives within the round, the bridge returns an
+internal heartbeat (`AGENT2LARK_WAITING_FOR_LARK`) that keeps the Chat
+parked without spamming Feishu — the heartbeat is suppressed before it
+would be sent back as an agent response.
 
 While the agent is actively working on a turn (between
 `beforeSubmitPrompt` / a real `stop.followup_message` and
@@ -142,15 +157,13 @@ can still override it for ad-hoc runs. Cursor's public hooks expose no streaming
 introspection, so the heartbeat only confirms "still working", not the
 intermediate reasoning.
 
-The relay also mirrors **safe short progress** to the bound thread. It
-posts one-line lifecycle messages such as `Running: pnpm test`,
-`Done: pnpm test (12s)`, or `Failed: ApplyPatch`, based on Cursor's
-tool/shell hooks. Full stdout/stderr and tool outputs are intentionally
-not forwarded. Set `progressRelayEnabled` to `false` in
-`~/.agent2lark/config.json`, or set `AGENT2LARK_PROGRESS_RELAY=0`, to
-turn these progress messages off. Each progress message resets the
-thinking timer, so `🤔 Thinking…` is only posted after progress has been
-quiet for at least `thinkingIntervalMs`.
+By default, the relay mirrors assistant text replies to the bound thread,
+not tool-call lifecycle noise. Optional **safe short progress** can be
+enabled by setting `progressRelayEnabled` to `true` in
+`~/.agent2lark/config.json`, or by setting `AGENT2LARK_PROGRESS_RELAY=1`.
+When enabled, it posts one-line lifecycle messages such as
+`Running: pnpm test`, `Done: pnpm test (12s)`, or `Failed: ApplyPatch`;
+full stdout/stderr and tool outputs are still not forwarded.
 
 To stop the wait loop for that thread, mention the bot in the same
 thread:
@@ -352,7 +365,7 @@ enough to localise where a stalled message is stuck.
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | Feishu message never reaches Cursor Chat | `lark-cli event +subscribe` silently disconnected | tail `~/.agent2lark/logs/lark-listen.out.log` — the listener now respawns child on exit; if it loops with `code=2`, an orphan subscriber holds the lock; run `pnpm run stop-relay` and restart |
-| Cursor Chat does not pick up queued messages | The Chat ended a turn but no `stop` hook ran (e.g., Ask-mode), or the wait loop was disabled | run a turn in Agent mode, or send `继续等待飞书消息` to re-enter the loop |
+| Cursor Chat does not pick up queued messages | No `stop` hook is currently long-polling (common right after bind), Ask-mode did not run an Agent turn, or the wait loop was disabled | send the wait-loop starter in the bound Cursor Chat: `AGENT2LARK_WAITING_FOR_LARK` plus the "reply only" and "do not invoke tools" lines |
 | `stop` hook disconnects after 30 s | Old build before `relayBridgeTimeoutMs` extension | rebuild and restart Cursor; the hook now uses `AGENT2LARK_WAIT_POLL_MS + 5_000` |
 | Bridge socket missing | Bridge not running | `pnpm run start-relay` (or `pnpm run bridge:lark` in foreground) |
 | Bot cannot reply to thread | Missing `im:message:send_as_bot` scope, or bot is not in the chat | re-check Feishu app permissions and group membership |

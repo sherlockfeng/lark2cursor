@@ -102,15 +102,18 @@ Turn end (cursor_agent_response, cursor_stop returning empty or
 (`0` disables the heartbeat without affecting the wait loop). The
 `AGENT2LARK_THINKING_INTERVAL_MS` env var remains an ad-hoc override.
 
-Safe progress relay uses Cursor lifecycle hooks rather than assistant
-streaming. `beforeShellExecution` / `preToolUse` can emit a `Running: ...`
-message once approval resolves to `allow`; `afterShellExecution`,
-`postToolUse`, and `postToolUseFailure` emit short `Done:` / `Failed:`
-messages. These contain only the tool/command label, optional duration,
-and exit code. Full shell output and tool output are not sent to Lark.
-Each sent progress message calls `ThinkingHeartbeat.touch(sessionId)`,
-so the generic `🤔 Thinking…` heartbeat only appears after progress has
-been quiet for at least `thinkingIntervalMs`. `progressRelayEnabled` in
+Safe progress relay is opt-in because most users want assistant text
+replies mirrored, not tool-call lifecycle noise. When
+`progressRelayEnabled` is `true`, it uses Cursor lifecycle hooks rather
+than assistant streaming. `beforeShellExecution` / `preToolUse` can emit a
+`Running: ...` message once approval resolves to `allow`;
+`afterShellExecution`, `postToolUse`, and `postToolUseFailure` emit short
+`Done:` / `Failed:` messages. These contain only the tool/command label,
+optional duration, and exit code. Full shell output and tool output are
+not sent to Lark. Each sent progress message calls
+`ThinkingHeartbeat.touch(sessionId)`, so the generic `🤔 Thinking…`
+heartbeat only appears after progress has been quiet for at least
+`thinkingIntervalMs`. `progressRelayEnabled` in
 `~/.agent2lark/config.json` controls this feature;
 `AGENT2LARK_PROGRESS_RELAY` is the env override.
 
@@ -285,6 +288,22 @@ Notes:
   reference in the same thread.
 
 ## IDE Chat wait loop
+
+Binding a Lark thread is handled in `beforeSubmitPrompt` and returns
+`continue: false`. That keeps the bind command out of the model, but it
+also means the bind operation itself does not create an Agent turn and
+therefore cannot start the `stop` hook wait loop. After a successful bind,
+the user must send the wait-loop starter in the same Cursor Chat:
+
+```text
+AGENT2LARK_WAITING_FOR_LARK
+Please reply with only: AGENT2LARK_WAITING_FOR_LARK
+Do not invoke any tools and do not send a business reply to Lark.
+```
+
+That prompt asks the model to echo only the sentinel, avoiding accidental
+file reads or tool calls. The end of that turn triggers the first
+`cursor_stop` call and parks the Chat in the loop below.
 
 The `cursor_stop` handler in `bridge-server.js`:
 
