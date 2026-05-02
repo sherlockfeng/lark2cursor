@@ -11,17 +11,16 @@
 项目提供两个主要能力：
 
 1. **IDE Chat Relay**
-   - 用户在飞书 thread 里发消息。
-   - 本地 listener 收到消息并写入本地 bridge 队列。
-   - Cursor Chat 在 `stop` hook 里长轮询队列，把飞书消息作为下一条 `followup_message` 注入 Chat。
-   - Cursor 生成回复后，`afterAgentResponse` hook 把回复发回同一个飞书 thread。
-
+  - 用户在飞书 thread 里发消息。
+  - 本地 listener 收到消息并写入本地 bridge 队列。
+  - Cursor Chat 在 `stop` hook 里长轮询队列，把飞书消息作为下一条 `followup_message` 注入 Chat。
+  - Cursor 生成回复后，`afterAgentResponse` hook 把回复发回同一个飞书 thread。
 2. **Remote Tool Approval**
-   - Cursor 执行高风险工具前触发 approval hooks。
-   - hook 把审批请求发给本地 bridge。
-   - bridge 在绑定的飞书 thread 里发审批提示。
-   - 用户在 thread 内回复 `/allow`、`/deny`、`/allow!`、`/deny!` 等命令。
-   - bridge 解除阻塞中的 hook，并按需把“记住本次决策”的规则写入本地 policy 文件。
+  - Cursor 执行高风险工具前触发 approval hooks。
+  - hook 把审批请求发给本地 bridge。
+  - bridge 在绑定的飞书 thread 里发审批提示。
+  - 用户在 thread 内回复 `/allow`、`/deny`、`/allow!`、`/deny!` 等命令。
+  - bridge 解除阻塞中的 hook，并按需把“记住本次决策”的规则写入本地 policy 文件。
 
 ## 2. 非目标与约束
 
@@ -393,20 +392,22 @@ bridge closes connection
 
 ### 9.1 Message 类型总表
 
-| Type | Sender | Purpose | Response |
-| --- | --- | --- | --- |
-| `cursor_session_start` | Cursor hook | 注册 Cursor session | `{additional_context}` |
-| `cursor_prompt_submit` | Cursor hook | 检查 bind 命令 / 开始心跳 | `{continue, user_message?}` |
-| `cursor_stop` | Cursor hook | 长轮询飞书队列 | `{followup_message?}` |
-| `cursor_agent_response` | Cursor hook | 把 Cursor 回复发回飞书 | `{ok, suppressed?}` |
-| `cursor_progress` | Cursor hooks | 同步短进度 | `{ok, sent, reason?}` |
-| `cursor_approval_request` | Cursor approval hooks | 远程审批 | `{decision, reason}` |
-| `lark_message` | lark-listen | 飞书普通消息入队 | `{ok, routed?}` |
-| `lark_create_bind` | lark-listen | 创建 bind code | `{ok, code}` |
-| `lark_create_agent_bind` | lark-listen | 创建内部 official agent binding | `{ok, binding}` |
-| `lark_disable_wait` | lark-listen | 关闭等待循环 | `{ok}` |
-| `lark_unbind_thread` | lark-listen | 解绑 thread | `{ok, removed}` |
-| `lark_approval_decision` | lark-listen | 处理审批回复 | `{ok, ...}` |
+
+| Type                      | Sender                | Purpose                     | Response                    |
+| ------------------------- | --------------------- | --------------------------- | --------------------------- |
+| `cursor_session_start`    | Cursor hook           | 注册 Cursor session           | `{additional_context}`      |
+| `cursor_prompt_submit`    | Cursor hook           | 检查 bind 命令 / 开始心跳           | `{continue, user_message?}` |
+| `cursor_stop`             | Cursor hook           | 长轮询飞书队列                     | `{followup_message?}`       |
+| `cursor_agent_response`   | Cursor hook           | 把 Cursor 回复发回飞书             | `{ok, suppressed?}`         |
+| `cursor_progress`         | Cursor hooks          | 同步短进度                       | `{ok, sent, reason?}`       |
+| `cursor_approval_request` | Cursor approval hooks | 远程审批                        | `{decision, reason}`        |
+| `lark_message`            | lark-listen           | 飞书普通消息入队                    | `{ok, routed?}`             |
+| `lark_create_bind`        | lark-listen           | 创建 bind code                | `{ok, code}`                |
+| `lark_create_agent_bind`  | lark-listen           | 创建内部 official agent binding | `{ok, binding}`             |
+| `lark_disable_wait`       | lark-listen           | 关闭等待循环                      | `{ok}`                      |
+| `lark_unbind_thread`      | lark-listen           | 解绑 thread                   | `{ok, removed}`             |
+| `lark_approval_decision`  | lark-listen           | 处理审批回复                      | `{ok, ...}`                 |
+
 
 ## 10. 持久化状态模型
 
@@ -533,8 +534,8 @@ bridge closes connection
 }
 ```
 
-3. bridge 写入 `pendingBinds[code]`，默认 10 分钟过期。
-4. listener 回复：
+1. bridge 写入 `pendingBinds[code]`，默认 10 分钟过期。
+2. listener 回复：
 
 ```text
 message_id: om_xxx
@@ -657,9 +658,9 @@ loop:
 拿到队列消息后：
 
 1. `ackInboundLarkMessage`
-   - 添加 👀 reaction。
-   - 回复 `Got it, processing…`。
-   - 使用 `Promise.allSettled`，ack 失败不能阻塞主流程。
+  - 添加 👀 reaction。
+  - 回复 `Got it, processing…`。
+  - 使用 `Promise.allSettled`，ack 失败不能阻塞主流程。
 2. 启动 thinking heartbeat。
 3. 返回：
 
@@ -891,8 +892,8 @@ schema：
 1. `rule.tool === tool`，否则不匹配。
 2. `toolScope === true` 直接匹配该 tool。
 3. `pathPrefix` 非空：
-   - 如果 command 看起来是绝对路径，检查 command startsWith pathPrefix。
-   - 否则检查 cwd 是否在 pathPrefix 内。
+  - 如果 command 看起来是绝对路径，检查 command startsWith pathPrefix。
+  - 否则检查 cwd 是否在 pathPrefix 内。
 4. `commandPrefix` 非空：检查 command startsWith prefix。
 5. `commandPrefix` 空不能做 wildcard，只能匹配空 command。
 
@@ -930,7 +931,7 @@ go.mod
 Cargo.toml
 ```
 
-3. 规则写：
+1. 规则写：
 
 ```js
 { pathPrefix: "<project-root>/", commandPrefix: "" }
@@ -1129,18 +1130,20 @@ lark-cli im +messages-reply \
 
 `lark-listener.js` 需要支持：
 
-| 命令 | 说明 |
-| --- | --- |
-| `bind chat` | 创建 IDE Chat Relay bind code |
-| `绑定对话` | `bind chat` 中文兼容 |
-| `unbind` / `un bind` | 解除当前 thread binding |
-| `解绑` / `解除绑定` | unbind 中文兼容 |
-| `/help` / `help` / `帮助` | 发送帮助 |
-| `stop wait` / `disable wait` / `pause wait` | 关闭等待循环 |
-| `停止等待` / `关闭等待` | wait 中文兼容 |
-| `create cursor agent` | 内部 official agent binding |
-| `创建 Cursor Agent 对话` | 内部兼容命令 |
-| `/allow...` / `/deny...` | 审批决策 |
+
+| 命令                                          | 说明                          |
+| ------------------------------------------- | --------------------------- |
+| `bind chat`                                 | 创建 IDE Chat Relay bind code |
+| `绑定对话`                                      | `bind chat` 中文兼容            |
+| `unbind` / `un bind`                        | 解除当前 thread binding         |
+| `解绑` / `解除绑定`                               | unbind 中文兼容                 |
+| `/help` / `help` / `帮助`                     | 发送帮助                        |
+| `stop wait` / `disable wait` / `pause wait` | 关闭等待循环                      |
+| `停止等待` / `关闭等待`                             | wait 中文兼容                   |
+| `create cursor agent`                       | 内部 official agent binding   |
+| `创建 Cursor Agent 对话`                        | 内部兼容命令                      |
+| `/allow...` / `/deny...`                    | 审批决策                        |
+
 
 命令识别建议：
 
@@ -1219,11 +1222,11 @@ After changing scopes in Feishu/Lark Developer Console, publish the app change a
 5. 启动 bridge 和 lark-listen 后台进程。
 6. 询问复用已有群还是新建群。
 7. 复用已有群：
-   - 输入 `chat_id`。
-   - 调用 `addBotToChat`。
+  - 输入 `chat_id`。
+  - 调用 `addBotToChat`。
 8. 新建群：
-   - 输入群名，默认 `Cursor Conversation`。
-   - 调用 `createCursorConversationChat`。
+  - 输入群名，默认 `Cursor Conversation`。
+  - 调用 `createCursorConversationChat`。
 9. 打印 binding guide。
 
 ## 18. Relay Supervisor
@@ -1273,12 +1276,12 @@ schema：
 
 1. 收集 runtime 中 pid。
 2. 对每个 pid：
-   - `process.kill(-pid, "SIGTERM")`
-   - `process.kill(pid, "SIGTERM")`
+  - `process.kill(-pid, "SIGTERM")`
+  - `process.kill(pid, "SIGTERM")`
 3. 等 600ms。
 4. 仍存活则：
-   - `process.kill(-pid, "SIGKILL")`
-   - `process.kill(pid, "SIGKILL")`
+  - `process.kill(-pid, "SIGKILL")`
+  - `process.kill(pid, "SIGKILL")`
 5. 删除 runtime 文件。
 
 这样能避免 orphaned `lark-cli event +subscribe` 继续持有 lock。
@@ -1432,11 +1435,11 @@ await new Promise(() => {})
 2. listener 发送 `lark_create_agent_bind`。
 3. bridge 在该 thread 创建 `mode: "official_agent"` binding。
 4. 后续 `lark_message` 如果命中 official agent binding：
-   - ack 飞书消息。
-   - 启动 thinking heartbeat，key 使用 `oa:<chat>:<thread>:<message>`.
-   - 调用 `cursorRunner.runPrompt({ cwd, prompt, agentSessionId })`。
-   - 保存新的 `agentSessionId`。
-   - 把 runner 输出发回飞书。
+  - ack 飞书消息。
+  - 启动 thinking heartbeat，key 使用 `oa:<chat>:<thread>:<message>`.
+  - 调用 `cursorRunner.runPrompt({ cwd, prompt, agentSessionId })`。
+  - 保存新的 `agentSessionId`。
+  - 把 runner 输出发回飞书。
 
 `cursor-runner.js` 优先使用 `@cursor/sdk`：
 
